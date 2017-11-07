@@ -16,5 +16,17 @@ library(readr)
 mwlw = read.transactions("LW_TX_data.csv", sep = ",")
 View(mwlw)
 
-itemFrequencyPlot(mwlw,topN=20,type="absolute")
+itemFrequencyPlot(mwlw,topN=40,type="absolute")
+
+## Let's do some mining...
+
+# Get the rules and sort in order of 'likelihood'
+rules <- apriori(mwlw, parameter = list(supp = 0.001, conf = 0.8,maxlen=3))  # max len makes for more concise rules
+rules<-sort(rules, by="confidence", decreasing=TRUE)
+
+# Show the top 5 rules, but only 2 digits
+options(digits=2)
+inspect(rules[1:20])
+
+
 
