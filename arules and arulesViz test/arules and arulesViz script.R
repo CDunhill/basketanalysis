@@ -28,5 +28,20 @@ rules<-sort(rules, by="confidence", decreasing=TRUE)
 options(digits=2)
 inspect(rules[1:20])
 
+# Redundancies
+# Sometimes, rules will repeat. Redundancy indicates that one item might be a given.
+# As an analyst you can elect to drop the item from the dataset.
+# Alternatively, you can remove redundant rules generated.
+# We can eliminate these repeated rules using the follow snippet of code:
+
+# I DON'T THINK THIS WORKS IN ITS CURRENT FORM...
+
+subset.matrix <- is.subset(rules, rules)
+subset.matrix[lower.tri(subset.matrix, diag=T)] <- NA
+redundant <- colSums(subset.matrix, na.rm=T) >= 1
+rules.pruned <- rules[!redundant]
+rules<-rules.pruned
+
+
 
 
