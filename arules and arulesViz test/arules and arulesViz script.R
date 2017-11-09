@@ -13,28 +13,32 @@ library(datasets) # is this necessary?
 
 # Load the data set
 library(readr)
-mwlw = read.transactions("LW_TX_data.csv", sep = ",")
+mwlw = read.transactions("LW_TX_data excl SKI packages etc.csv", sep = ",")
 View(mwlw)
 
 itemFrequencyPlot(mwlw,topN=40,type="absolute")
 
-## Let's do some mining...
+## Mining...
 
 # Get the rules and sort in order of 'likelihood'
-rules <- apriori(mwlw, parameter = list(supp = 0.001, conf = 0.8,maxlen=3))  # max len makes for more concise rules
+
+# The SUPPORT is how many times the product combination appears in our transaction list.
+# So 0.01 would only show where the particular combination ('LHS', or antecedent) appears in >=1% transactions.
+# The CONFIDENCE is simply how often the rule is shown to be true
+rules <- apriori(mwlw, parameter = list(supp = 0.001, conf = 0.6,maxlen=3))  # max len makes for more concise rules
 rules<-sort(rules, by="confidence", decreasing=TRUE)
 
 # Show the top 5 rules, but only 2 digits
 options(digits=2)
-inspect(rules[1:20])
+inspect(rules[1:10])
 
 # Redundancies
 # Sometimes, rules will repeat. Redundancy indicates that one item might be a given.
 # As an analyst you can elect to drop the item from the dataset.
 # Alternatively, you can remove redundant rules generated.
-# We can eliminate these repeated rules using the follow snippet of code:
+# Eliminate these repeated rules using the follow:
 
-# I DON'T THINK THIS WORKS IN ITS CURRENT FORM...
+# (I DON'T THINK THIS WORKS IN ITS CURRENT FORM)
 
 subset.matrix <- is.subset(rules, rules)
 subset.matrix[lower.tri(subset.matrix, diag=T)] <- NA
