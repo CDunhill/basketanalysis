@@ -17,6 +17,7 @@ library(readr)
 mwlw = read.transactions("LW_TX_data excl SKI packages etc.csv", sep = ",")
 View(mwlw)
 
+# Let's take a look at the data with a plot
 itemFrequencyPlot(mwlw,topN=40,type="absolute")
 
 ## Mining...
@@ -26,48 +27,29 @@ itemFrequencyPlot(mwlw,topN=40,type="absolute")
 # The SUPPORT is how many times the product combination appears in our transaction list.
 # So 0.01 would only show where the particular combination ('LHS', or antecedent) appears in >=1% transactions.
 # The CONFIDENCE is simply how often the rule is shown to be true
-rules <- apriori(mwlw, parameter = list(supp = 0.0015, conf = 0.5,maxlen=5))  # max len makes for more concise rules
+rules <- apriori(mwlw, parameter = list(supp = 0.0005, conf = 0.3,maxlen=5))  # max len makes for more concise rules
 rules<-sort(rules, by="confidence", decreasing=TRUE)
 
-# Show the top 5 rules, but only 2 digits
-options(digits=2) # Part of base package; digits controls no. sig digits when printing numeric values
-inspect(rules[1:10])
+ig <- plot( rules, method="graph", control=list(type="items"))
 
-# Redundancies
-# Sometimes, rules will repeat. Redundancy indicates that one item might be a given.
-# As an analyst you can elect to drop the item from the dataset.
-# Alternatively, you can remove redundant rules generated.
-# Eliminate these repeated rules using the follow:
+# saveAsGraph seems to render bad DOT for this case
+tf <- tempfile( )
+saveAsGraph( rules, file = tf, format = "dot" )
+# clean up temp file if desired
+#unlink(tf)
 
-# (I DON'T THINK THIS WORKS IN ITS CURRENT FORM)
-
-# DO NOT RUN...
-subset.matrix <- is.subset(rules, rules)
-subset.matrix[lower.tri(subset.matrix, diag=T)] <- NA
-redundant <- colSums(subset.matrix, na.rm=T) >= 1
-rules.pruned <- rules[!redundant]
-rules<-rules.pruned
-
-# TARGETING ITEMS
-# EG. What are customers likely to buy before buying KID-ACC-GLO
-#     What are customers likely to buy if they purchase KID-ACC-GLO?
-rules<-apriori(data=mwlw, parameter=list(supp=0.0015,conf = 0.4), 
-               appearance = list(default="lhs",rhs="KID-ACC-GLO"),
-               control = list(verbose=F))
-rules<-sort(rules, decreasing=TRUE,by="confidence")
-inspect(rules[1:10])
-
-# Likewise, we can set the left hand side to be “KID-ACC-GLO” and find its antecedents.
-rules<-apriori(data=mwlw, parameter=list(supp=0.0015,conf = 0.05,minlen=2), 
-               appearance = list(default="rhs",lhs="KID-ACC-GLO"),
-               control = list(verbose=F))
-rules<-sort(rules, decreasing=TRUE,by="confidence")
-inspect(rules[1:5])
-
-
-# VISUALISATION
-library(arulesViz)
-plot(rules, method = "graph", engine = "interactive")
+# let's bypass saveAsGraph and just use our igraph
+ig_df <- get.data.frame( ig, what = "both" )
+visNetwork(
+  nodes = data.frame(
+    id = ig_df$vertices$name
+    ,value = ig_df$vertices$support # could change to lift or confidence
+    ,title = ifelse(ig_df$vertices$label == "",ig_df$vertices$name, ig_df$vertices$label)
+    ,ig_df$vertices
+  )
+  , edges = ig_df$edges
+) %>%
+  visOptions( highlightNearest = T )
 
 
 
