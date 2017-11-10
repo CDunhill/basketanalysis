@@ -10,6 +10,7 @@
 library(arules)
 library(arulesViz)
 library(datasets) # is this necessary?
+library(vizNetwork) # a more fancy version of arulesViz
 
 # Load the data set
 library(readr)
