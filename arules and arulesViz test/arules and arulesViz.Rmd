@@ -1,12 +1,13 @@
 ---
 title: "Transaction Mining with arules and arulesViz and beginning to use R Markdown"
-author: "Chris Dunhill"
+author: "Author: Chris Dunhill"
 date: "16 November 2017"
 output: html_document
 ---
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
+knitr::knit_engines$set("Rscript")
 ```
 <br>
   
@@ -32,14 +33,14 @@ library(knitr)
   
 ### Creating and loading the Data Set
 
-The data was generated with the following SQL query, containing some Common Table Expressions or CTEs [NB. can't work out how to change to SQL syntax highlighting - perhaps using *knit_engines$set?*]:
+The data was generated with the following SQL query, containing some Common Table Expressions or CTEs.
+[NB. managed to change to SQL syntax highlighting using *knit_engines$set?* then commencing the following code box with '{sql eval=FALSE}'. eval=FALSE ensures that the code isn't run]. 
 
-```{r language, include=FALSE}
-knitr::knit_engines$set("SQL")
+```{r}
+knitr::knit_engines$set("sql")
 ```
 
-
-```{SQL eval=FALSE}
+```{sql eval=FALSE}
 
 SET TRANSACTION ISOLATION LEVEL READ UNCOMMITTED;
 declare @startDate datetime,@endDate datetime;
@@ -101,6 +102,12 @@ Ultimately it would be good to run this code directly in R using RODBC. However,
 
 This is how we load the data set into R and view it
 
+```{r include=FALSE}
+knitr::knit_engines$set("rscript")
+```
+
+```{r datain, message=FALSE, warning=FALSE}
 library(readr)
 mwlw = read.transactions("LW_TX_data excl SKI packages etc.csv", sep = ",")
-View(mwlw)
+```
+

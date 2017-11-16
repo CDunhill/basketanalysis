@@ -9,7 +9,7 @@
 <meta name="generator" content="pandoc" />
 
 
-<meta name="author" content="Chris Dunhill" />
+<meta name="author" content="Author: Chris Dunhill" />
 
 <meta name="date" content="2017-11-16" />
 
@@ -120,7 +120,7 @@ $(document).ready(function () {
 
 
 <h1 class="title toc-ignore">Transaction Mining with arules and arulesViz and beginning to use R Markdown</h1>
-<h4 class="author"><em>Chris Dunhill</em></h4>
+<h4 class="author"><em>Author: Chris Dunhill</em></h4>
 <h4 class="date"><em>16 November 2017</em></h4>
 
 </div>
@@ -145,7 +145,8 @@ library(knitr)</code></pre>
 </div>
 <div id="creating-and-loading-the-data-set" class="section level3">
 <h3>Creating and loading the Data Set</h3>
-<p>The data was generated with the following SQL query, containing some Common Table Expressions or CTEs [NB. can’t work out how to change to SQL syntax highlighting - perhaps using <em>knit_engines$set?</em>]:</p>
+<p>The data was generated with the following SQL query, containing some Common Table Expressions or CTEs. [NB. managed to change to SQL syntax highlighting using <em>knit_engines$set?</em> then commencing the following code box with ‘{sql eval=FALSE}’. eval=FALSE ensures that the code isn’t run].</p>
+<pre class="r"><code>knitr::knit_engines$set(&quot;sql&quot;)</code></pre>
 <pre class="sql"><code>
 SET TRANSACTION ISOLATION LEVEL READ UNCOMMITTED;
 declare @startDate datetime,@endDate datetime;
@@ -202,7 +203,8 @@ pivot
 option (recompile);</code></pre>
 <p><br> Ultimately it would be good to run this code directly in R using RODBC. However, for now, this has been generated in MSSQLSM and exported to a CSV file. Some cleaning was also done using Excel; it will be great to begin to use R for this purpose given there are countless tools for data cleansing and transformation.</p>
 <p>This is how we load the data set into R and view it</p>
-<p>library(readr) mwlw = read.transactions(“LW_TX_data excl SKI packages etc.csv”, sep = “,”) View(mwlw)</p>
+<pre class="r"><code>library(readr)
+mwlw = read.transactions(&quot;LW_TX_data excl SKI packages etc.csv&quot;, sep = &quot;,&quot;)</code></pre>
 </div>
 </div>
 
