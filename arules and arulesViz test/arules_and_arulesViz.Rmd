@@ -154,9 +154,9 @@ inspect(rules[1:10])
 Let's take a look at a visual representation of the rules, using the *arulesViz* package:
 
 ```{r viz}
-plot(rules, method = "graph")
+plot(rules, method = "graph", igraphLayout = "layout_with_fr")
+# Check ??layout_in_circle for other options
 ```
 
-Hmmm... might need to look at the formatting and layout options!?
 
 
