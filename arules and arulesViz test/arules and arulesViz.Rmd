@@ -1,0 +1,106 @@
+---
+title: "Transaction Mining with arules and arulesViz and beginning to use R Markdown"
+author: "Chris Dunhill"
+date: "16 November 2017"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+<br>
+  
+## What this document is about <br>
+
+This is an experiment with transaction mining, presented using R Markdown. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
+
+The transaction mining is based on a tutorial from this website: <http://www.salemmarafi.com/code/market-basket-analysis-with-r/>
+<br><br>
+ 
+## How did we do it?
+  
+### R Packages Used
+
+```{r packages, message=FALSE, warning=FALSE}
+library(arules)
+library(arulesViz)
+library(datasets)   # not necessary if using own data, I'm guessing?
+library(visNetwork) # a more fancy, animated version of arulesViz
+library(knitr)
+```
+<br>  
+  
+### Creating and loading the Data Set
+
+The data was generated with the following SQL query, containing some Common Table Expressions or CTEs [NB. can't work out how to change to SQL syntax highlighting - perhaps using *knit_engines$set?*]:
+
+```{r language, include=FALSE}
+knitr::knit_engines$set("SQL")
+```
+
+
+```{SQL eval=FALSE}
+
+SET TRANSACTION ISOLATION LEVEL READ UNCOMMITTED;
+declare @startDate datetime,@endDate datetime;
+select @startDate=StartDate,@endDate=EndDate from Calendar where PeriodKey = 'L5WKS';
+
+with txqry as (
+	select	
+		left (sh.saleshash,25) [TXID],
+		P.Category + '-' + P.Dept + '-' + P.SubDept [Prod],
+		RANK() OVER
+			(PARTITION BY left (sh.saleshash,25) ORDER BY P.Category + '-' + P.Dept + '-' + P.SubDept) [Item]  
+	from SalesHis SH with (nolock)
+		left Join Products P with (nolock) on P.Ref = SH.Ref
+		left Join Branches B with (nolock) on B.Code = SH.Branch
+	where 1=1
+		and SH.Date between @startDate and @endDate
+		and sh.Qty > 0
+		and P.Dept not in ('CAR', 'DUM', 'NFS', 'PNM')
+		and P.Brand = 'MW'
+		and B.BranchCategory in ('HS','FOC')
+	group by
+		P.Category + '-' + P.Dept + '-' + P.SubDept, left (sh.saleshash,25)
+),
+numitems as
+(
+select TXID, max([Item]) [NumItems] from txqry group by TXID
+),
+morethan1 as
+(
+select t.TXID, t.Prod, t.Item, n.NumItems from txqry t inner join numitems n on t.txid = n.txid where numitems>1
+)
+
+-------------------------------------------------------------------
+
+-- Maybe there is a tidier way of eliminating those pesky NULLs... maybe could have done it in R
+
+select
+	isnull([1],'') [1],
+	isnull([2],'') [2],
+	isnull([3],'') [3],
+	isnull([4],'') [4],
+	isnull([5],'') [5],
+	isnull([6],'') [6],
+	isnull([7],'') [7],
+	isnull([8],'') [8],
+	isnull([9],'') [9],
+	isnull([10],'') [10]
+from morethan1
+pivot
+(
+	max([Prod])	for [Item] in ([1],[2],[3],[4],[5],[6],[7],[8],[9],[10])
+) piv
+
+option (recompile);
+```
+
+<br>
+Ultimately it would be good to run this code directly in R using RODBC. However, for now, this has been generated in MSSQLSM and exported to a CSV file. Some cleaning was also done using Excel; it will be great to begin to use R for this purpose given there are countless tools for data cleansing and transformation.
+
+This is how we load the data set into R and view it
+
+library(readr)
+mwlw = read.transactions("LW_TX_data excl SKI packages etc.csv", sep = ",")
+View(mwlw)
