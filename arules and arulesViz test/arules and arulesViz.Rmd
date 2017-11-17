@@ -22,7 +22,7 @@ The transaction mining is based on a tutorial from this website: <http://www.sal
   
 ### R Packages Used
 
-```{r packages, message=FALSE, warning=FALSE}
+```{r packages, message=FALSE, warning=TRUE}
 library(arules)
 library(arulesViz)
 library(datasets)   # not necessary if using own data, I'm guessing?
@@ -40,7 +40,7 @@ The data was generated with the following SQL query, containing some Common Tabl
 knitr::knit_engines$set("sql")
 ```
 
-```{sql eval=FALSE}
+```{sql, eval=FALSE}
 
 SET TRANSACTION ISOLATION LEVEL READ UNCOMMITTED;
 declare @startDate datetime,@endDate datetime;
@@ -137,7 +137,7 @@ For the purpose of this analysis we will use the *arules* R package which uses t
 The *apriori* function is used to generate the rules for the data set. The *support* has been set to 0.002 (0.2%). There are about 51,000 transactions in our data so a support of 0.2% means that any rules with fewer than 102 transactions will be ignored. The *confidence* limit has been set to 0.5 (50%) so only rules which are proven to be true in more than half of the supported transactions will be shown. The *maxlen* parameter limits the number of basket items in the calculation [... I think!]
 
 ```{r rules, message=FALSE, warning=FALSE}
-rules <- apriori(mwlw, parameter = list(supp = 0.0020, conf = 0.5,maxlen=3))
+rules <- apriori(mwlw, parameter = list(supp = 0.0020, conf = 0.7,maxlen=3))
 rules <- sort(rules, by="confidence", decreasing=TRUE)
 ```
 
@@ -146,16 +146,17 @@ The *rules*  object cannot be viewed directly but we can look at the top results
 ```{r viewrules}
 # Show the top 10 rules, but only to 2 digits
 options(digits=2) # Part of base package; digits controls no. sig digits when printing numeric values
-inspect(rules[1:10])
+inspect(rules[1:5])
 ```
 
 ### Visualisation
 
 Let's take a look at a visual representation of the rules, using the *arulesViz* package:
 
-```{r viz}
-plot(rules, method = "graph", igraphLayout = "layout_with_fr", cex.lab=0.5)
-# Check ??layout_in_circle for other options
+```{r viz, fig.width=10, fig.height=4}
+invisible(plot(rules, method = "graph", cex=0.75, layout=igraph::with_fr(), main = "Visual Representation of Transaction Rules")) # cex to reduce font size
+# Check other layout options
+# *invisible* function is to hide console results and only show the plot itself.
 ```
 
 
