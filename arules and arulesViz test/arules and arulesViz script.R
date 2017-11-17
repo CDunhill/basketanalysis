@@ -17,7 +17,7 @@ library(readr)
 mwlw = read.transactions("LW_TX_data excl SKI packages etc.csv", sep = ",")
 View(mwlw)
 
-itemFrequencyPlot(mwlw,topN=40,type="absolute")
+itemFrequencyPlot(mwlw,topN=40,type="absolute", cex.names = 0.7, cex.axis = 0.7)
 
 ## Mining...
 
@@ -27,7 +27,7 @@ itemFrequencyPlot(mwlw,topN=40,type="absolute")
 # So 0.01 would only show where the particular combination ('LHS', or antecedent) appears in >=1% transactions.
 # The CONFIDENCE is simply how often the rule is shown to be true
 rules <- apriori(mwlw, parameter = list(supp = 0.0015, conf = 0.5,maxlen=5))  # max len makes for more concise rules
-rules<-sort(rules, by="confidence", decreasing=TRUE)
+rules <- sort(rules, by="confidence", decreasing=TRUE)
 
 # Show the top 5 rules, but only 2 digits
 options(digits=2) # Part of base package; digits controls no. sig digits when printing numeric values
@@ -68,7 +68,6 @@ inspect(rules[1:5])
 # VISUALISATION
 library(arulesViz)
 plot(rules, method = "graph", engine = "interactive")
-
 
 
 
