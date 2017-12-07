@@ -1,8 +1,11 @@
 ---
-title: "Transaction Mining with arules and arulesViz and beginning to use R Markdown"
-author: "Author: Chris Dunhill"
+title: "Transaction Mining with arules and arulesViz"
+author: 'Author: Chris Dunhill'
 date: "16 November 2017"
-output: html_document
+output:
+  html_document: default
+  pdf_document: default
+  word_document: default
 ---
 
 ```{r setup, include=FALSE}
@@ -11,30 +14,48 @@ knitr::knit_engines$set("Rscript")
 ```
 <br>
   
-## What this document is about <br>
+## Introduction <br>
 
-This is an experiment with transaction mining, presented using R Markdown. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
-
-The transaction mining is based on a tutorial from this website: <http://www.salemmarafi.com/code/market-basket-analysis-with-r/>
-<br><br>
+This is an experiment with transaction mining (presented using R Markdown). The inspiration for this analysis was the following article <http://www.salemmarafi.com/code/market-basket-analysis-with-r/>
+<br>
+<br>
  
-## How did we do it?
+## What method was used?
+
+The first challenge was to get the data into the correct format. I opted to do this work in SQL as I am slightly more familiar with this language, however it is likely to be possible in R, especially using packages such as *tidyr* and *dplyr*.
+
+All R scripting was conducted using the open source RStudio IDE.
+<br>  
   
-### R Packages Used
+### R Packages employed
+
+All R packages need to be downloaded before loading with the library command.
 
 ```{r packages, message=FALSE, warning=TRUE}
 library(arules)
 library(arulesViz)
-library(datasets)   # not necessary if using own data, I'm guessing?
-library(visNetwork) # a more fancy, animated version of arulesViz
-library(knitr)      # used for changing the markdown parameters, I think
+library(datasets)   # probably only required if you want to follow the tutorial on the link above
+library(visNetwork) # an updated 'animated' version of arulesViz. Interactive, plus arranges the graphs better.
+library(knitr)      # used for creating this Markdown document
+library(readr)      # importing CSV data
 ```
-<br>  
+<br>
   
 ### Creating and loading the Data Set
 
-The data was generated with the following SQL query, containing some Common Table Expressions or CTEs.
-[NB. managed to change to SQL syntax highlighting using *knit_engines$set?* then commencing the following code box with '{sql eval=FALSE}'. eval=FALSE ensures that the code isn't run]. 
+For this analysis to work, it is required to arrange data as one row per basket, with each column being a separate item in the basket. Here, I opted to aggregate products up to TYPE level as I expect it might produce better results compared to product (style / description) level. However, I've not tested this theory so this would be an obvious next step to take. The code would need to be adjusted.
+
+The other limitation to this is that only the last 5 weeks' data have been queried. Web transactions also excluded here, however it would be fairly straightforward to adjust this code to include WWW. In this case, you would need to change the transaction ID TXID as the format is different for web orders compared to retail branches. 
+
+As mentioned, the merchandise is aggregated to TYPE level and represented in the MEN-ACC-SOC format - ie. CAT-DEPT-TYPE.
+
+The SQL makes use of Common Table Expressions (CTEs) - especially useful as the PIVOT command is applied to the data which could otherwise become a bit complicated.
+
+The SQL is run in SQL Server Manager and a CSV file is generated. There is an R package called RODBC which enables SQL querying directly from R. This could be useful for later versions of this analysis, though I couldn't get it to work this time for some reason.
+
+A little tidying was also done using Excel due to my familiarity of that tool. For example, I excluded baskets which included ski package deals as these were distorting the results. However, in future these should be included - with the components of the package perhaps aggregated into one 'product' (thanks to Andrew Steavenson for suggesting this!)
+
+[nb. SQL syntax highlighting possible using *knit_engines$set?* command then commencing the following code box with '{sql eval=FALSE}' (hidden here). *eval=FALSE* ensures that the code is not run]. 
 
 ```{r}
 knitr::knit_engines$set("sql")
@@ -75,7 +96,7 @@ select t.TXID, t.Prod, t.Item, n.NumItems from txqry t inner join numitems n on 
 
 -------------------------------------------------------------------
 
--- Maybe there is a tidier way of eliminating those pesky NULLs... maybe could have done it in R
+-- Maybe there is an easier way of eliminating the NULLs... perhaps in R?
 
 select
 	isnull([1],'') [1],
@@ -98,16 +119,13 @@ option (recompile);
 ```
 
 <br>
-Ultimately it would be good to run this code directly in R using RODBC. However, for now, this has been generated in MSSQLSM and exported to a CSV file. Some cleaning was also done using Excel; it will be great to begin to use R for this purpose given there are countless tools for data cleansing and transformation.
-
-This is how we load the data set into R and view it
+This is how we load the data set into R and view it:
 
 ```{r include=FALSE}
 knitr::knit_engines$set("rscript")
 ```
 
 ```{r datain, message=FALSE, warning=FALSE}
-library(readr)
 mwlw = read.transactions("LW_TX_data excl SKI packages etc.csv", sep = ",")
 ```
 
@@ -126,28 +144,41 @@ itemFrequencyPlot(mwlw,topN=30,type="absolute", main = "Most frequently occurrin
 
 ### How to mine
 
-For the purpose of this analysis we will use the *arules* R package which uses the methods of *association rules* mining. The way it works is to first establish the 'rules' before sorting them in order of frequency of occurrence.
+For the purpose of this analysis we will use the *arules* R package which uses the methods of *association rules* mining. The way this analysis works is to first establish the 'rules' before sorting them in order of frequency of occurrence. 
 
 **Some terminology**:
 
+* An example of an association RULE is *if a customer buys men's shoes, he is 70% likely to also purchase socks*.
 * SUPPORT is how many times the product combination appears in our transaction list. For example, a value of 0.01 would only show where the particular combination ('LHS', or antecedent) appears in >=1% transactions.
 * CONFIDENCE is how often the rule is shown to be true
 * LIFT is the ratio of the observed *support* to that expected if the LHS and RHS were independent
 
-The *apriori* function is used to generate the rules for the data set. The *support* has been set to 0.002 (0.2%). There are about 51,000 transactions in our data so a support of 0.2% means that any rules with fewer than 102 transactions will be ignored. The *confidence* limit has been set to 0.5 (50%) so only rules which are proven to be true in more than half of the supported transactions will be shown. The *maxlen* parameter limits the number of basket items in the calculation [... I think!]
+The *apriori* function from the arules package is used to generate the rules for the data set. The *support* has been set to 0.002 (0.2%). There are 51,282 transactions in our data so a support of 0.2% means that any rules with fewer than 102 transactions will be ignored. The *confidence* limit has been set to 0.5 (50%) so only rules which are proven to be true in more than half of the supported transactions will be shown. The *maxlen* parameter limits the number of basket items in the calculation [nb. need to check this is the case!]
+
+<br>
 
 ```{r rules, message=FALSE, warning=FALSE}
 rules <- apriori(mwlw, parameter = list(supp = 0.0020, conf = 0.7,maxlen=3))
 rules <- sort(rules, by="confidence", decreasing=TRUE)
 ```
 
-The *rules*  object cannot be viewed directly but we can look at the top results as shown:
+<br>
+The line above sorts the *rules* object in order of highest *confidence*, however it may be useful at times to sort by *support* or *lift*.
+
+The object cannot be viewed directly but we can inspect the top results as shown:
 
 ```{r viewrules}
 # Show the top 10 rules, but only to 2 digits
 options(digits=2) # Part of base package; digits controls no. sig digits when printing numeric values
 inspect(rules[1:5])
 ```
+
+<br>
+My interpretation of this is - taking the first line as an example - if a customer buys both kids socks (KID-ACC-SOC) and base-layer pants (KID-BAS-PAN) then they are 85% likely (*confidence*) to also buy no-zip baselayer tops (KID-BAS-NZI). However, the evidence for this comes from only 102 transactions: the *support* of 0.002 X 51,282 (total baskets). 
+
+I still need to better understand the *lift* parameter but think that this takes into account the 'chance' occurence of the two items being in the same basket.
+
+
 
 ### Visualisation
 
@@ -159,5 +190,8 @@ invisible(plot(rules, method = "graph", cex=0.75, layout=igraph::with_fr(), main
 # *invisible* function is to hide console results and only show the plot itself.
 ```
 
+<br>
+The graph above is admittedly not optimally laid out. The *visNetwork* package does a better job of it, however I struggled to get it to work with with the RMarkdown required to produce this document.
 
+As I understand it, the red circles represent each of the top *rules* with the size showing the *support* and the 'brightness' of the red indicating the *lift*.
 
