@@ -1,10 +1,10 @@
 ---
 title: "Transaction Mining with arules and arulesViz"
-author: 'Author: Chris Dunhill'
+author: 'Chris Dunhill, Mountain Warehouse'
 date: "16 November 2017"
 output:
-  html_document: default
   pdf_document: default
+  html_document: default
   word_document: default
 ---
 
@@ -24,7 +24,7 @@ This is an experiment with transaction mining (presented using R Markdown). The 
 
 The first challenge was to get the data into the correct format. I opted to do this work in SQL as I am slightly more familiar with this language, however it is likely to be possible in R, especially using packages such as *tidyr* and *dplyr*.
 
-All R scripting was conducted using the open source RStudio IDE.
+All R scripting and this R Markdown document were created with the open-source RStudio IDE.
 <br>  
   
 ### R Packages employed
@@ -34,10 +34,10 @@ All R packages need to be downloaded before loading with the library command.
 ```{r packages, message=FALSE, warning=TRUE}
 library(arules)
 library(arulesViz)
-library(datasets)   # probably only required if you want to follow the tutorial on the link above
-library(visNetwork) # an updated 'animated' version of arulesViz. Interactive, plus arranges the graphs better.
-library(knitr)      # used for creating this Markdown document
-library(readr)      # importing CSV data
+library(datasets)   # Only required if following the tutorial (link above)
+library(visNetwork) # Alternative to arulesViz. Interactive graphs, better arranged
+library(knitr)      # Used for creating this Markdown document
+library(readr)      # Importing CSV
 ```
 <br>
   
@@ -57,6 +57,9 @@ A little tidying was also done using Excel due to my familiarity of that tool. F
 
 [nb. SQL syntax highlighting possible using *knit_engines$set?* command then commencing the following code box with '{sql eval=FALSE}' (hidden here). *eval=FALSE* ensures that the code is not run]. 
 
+<br>
+<br>
+
 ```{r}
 knitr::knit_engines$set("sql")
 ```
@@ -72,7 +75,8 @@ with txqry as (
 		left (sh.saleshash,25) [TXID],
 		P.Category + '-' + P.Dept + '-' + P.SubDept [Prod],
 		RANK() OVER
-			(PARTITION BY left (sh.saleshash,25) ORDER BY P.Category + '-' + P.Dept + '-' + P.SubDept) [Item]  
+			(PARTITION BY left (sh.saleshash,25)
+			 ORDER BY P.Category + '-' + P.Dept + '-' + P.SubDept) [Item]  
 	from SalesHis SH with (nolock)
 		left Join Products P with (nolock) on P.Ref = SH.Ref
 		left Join Branches B with (nolock) on B.Code = SH.Branch
@@ -91,7 +95,10 @@ select TXID, max([Item]) [NumItems] from txqry group by TXID
 ),
 morethan1 as
 (
-select t.TXID, t.Prod, t.Item, n.NumItems from txqry t inner join numitems n on t.txid = n.txid where numitems>1
+    select t.TXID, t.Prod, t.Item, n.NumItems
+    from txqry t
+    inner join numitems n on t.txid = n.txid
+    where numitems>1
 )
 
 -------------------------------------------------------------------
@@ -119,6 +126,7 @@ option (recompile);
 ```
 
 <br>
+<br>
 This is how we load the data set into R and view it:
 
 ```{r include=FALSE}
@@ -131,13 +139,16 @@ mwlw = read.transactions("LW_TX_data excl SKI packages etc.csv", sep = ",")
 
 <br>
 
-### A basic plot
+### Basic frequency plot
 
-The data has been aggregated at Cat-Dept-Type level for this exercise. Let's take a look at a basic freqency plot to see whether it looks about right, plotting the top 30:
+The data has been aggregated at Cat-Dept-Type level for this exercise. Let's take a look at a simple freqency plot to see whether it looks about right, plotting the top 30:
 
 ```{r freqplot}
 # NB. the cex arguments are to reduce the font size for the X and Y axes, respectively
-itemFrequencyPlot(mwlw,topN=30,type="absolute", main = "Most frequently occurring product Types", sub = "Mountain Warehouse only. Some ski package transactions removed", cex.names = 0.7, cex.axis = 0.7)
+itemFrequencyPlot(mwlw,topN=30,type="absolute",
+                  main = "Most frequently occurring product Types",
+                  sub = "Mountain Warehouse only. Some ski package transactions removed",
+                  cex.names = 0.7, cex.axis = 0.7)
 ```
 
 <br>
@@ -146,16 +157,18 @@ itemFrequencyPlot(mwlw,topN=30,type="absolute", main = "Most frequently occurrin
 
 For the purpose of this analysis we will use the *arules* R package which uses the methods of *association rules* mining. The way this analysis works is to first establish the 'rules' before sorting them in order of frequency of occurrence. 
 
-**Some terminology**:
+###Some terminology
 
 * An example of an association RULE is *if a customer buys men's shoes, he is 70% likely to also purchase socks*.
 * SUPPORT is how many times the product combination appears in our transaction list. For example, a value of 0.01 would only show where the particular combination ('LHS', or antecedent) appears in >=1% transactions.
 * CONFIDENCE is how often the rule is shown to be true
 * LIFT is the ratio of the observed *support* to that expected if the LHS and RHS were independent
 
+###Apriori
+
 The *apriori* function from the arules package is used to generate the rules for the data set. The *support* has been set to 0.002 (0.2%). There are 51,282 transactions in our data so a support of 0.2% means that any rules with fewer than 102 transactions will be ignored. The *confidence* limit has been set to 0.5 (50%) so only rules which are proven to be true in more than half of the supported transactions will be shown. The *maxlen* parameter limits the number of basket items in the calculation [nb. need to check this is the case!]
 
-<br>
+<br><br>
 
 ```{r rules, message=FALSE, warning=FALSE}
 rules <- apriori(mwlw, parameter = list(supp = 0.0020, conf = 0.7,maxlen=3))
@@ -168,8 +181,8 @@ The line above sorts the *rules* object in order of highest *confidence*, howeve
 The object cannot be viewed directly but we can inspect the top results as shown:
 
 ```{r viewrules}
-# Show the top 10 rules, but only to 2 digits
-options(digits=2) # Part of base package; digits controls no. sig digits when printing numeric values
+# Show the top 5 rules, but only to 2 digits
+options(digits=2) # Base package: number of significant digits when printing numbers
 inspect(rules[1:5])
 ```
 
@@ -185,13 +198,16 @@ I still need to better understand the *lift* parameter but think that this takes
 Let's take a look at a visual representation of the rules, using the *arulesViz* package:
 
 ```{r viz, fig.width=10, fig.height=4}
-invisible(plot(rules, method = "graph", cex=0.75, layout=igraph::with_fr(), main = "Visual Representation of Transaction Rules")) # cex to reduce font size
+invisible(plot(rules, method = "graph",
+               cex=0.75,
+               layout=igraph::with_fr(),
+               main = "Visual Representation of Rules")) # cex to reduce font size
 # Check other layout options
 # *invisible* function is to hide console results and only show the plot itself.
 ```
 
 <br>
-The graph above is admittedly not optimally laid out. The *visNetwork* package does a better job of it, however I struggled to get it to work with with the RMarkdown required to produce this document.
+The graph above is admittedly not optimally laid out. The *visNetwork* package does a better job of it, however I struggled to get it to work with with the R Markdown required to produce this document.
 
 As I understand it, the red circles represent each of the top *rules* with the size showing the *support* and the 'brightness' of the red indicating the *lift*.
 
